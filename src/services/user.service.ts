@@ -21,6 +21,8 @@ export class UserService {
 
         // create user
         const newUser = await userRepository.createUser(data);
+
+        
         return newUser;
     }
 
