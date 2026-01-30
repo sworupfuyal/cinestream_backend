@@ -2,7 +2,10 @@ import { UserService } from "../services/user.service";
 import { CreateUserDTO, LoginUserDTO } from "../dtos/user.dto";
 import { Request, Response } from "express";
 import z from "zod";
+import { CreateProfileDto } from "../dtos/user.profile.dto";
+import { UserProfileServices } from "../services/user.profile.service";
 let userService = new UserService();
+let userProfileServices = new UserProfileServices();
 export class AuthController {
     async register(req: Request, res: Response) {
         try {
@@ -14,6 +17,19 @@ export class AuthController {
             }
             const userData: CreateUserDTO = parsedData.data;
             const newUser = await userService.createUser(userData);
+            if (newUser.role === "user") {
+                try {
+                    const profileData: CreateProfileDto = {
+                        userId: newUser._id.toString(),
+                        fullName: newUser.fullname,
+                        email: newUser.email,
+                    };
+
+                    await userProfileServices.createUserProfile(profileData);
+                } catch (profileError) {
+                    console.error("Profile creation failed:", profileError);
+                }
+            }
             return res.status(201).json(
                 { success: true, message: "User Created", data: newUser }
             );
@@ -44,5 +60,5 @@ export class AuthController {
             );
         }
     }
-    
+
 }
