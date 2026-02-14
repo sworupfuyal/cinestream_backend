@@ -16,6 +16,10 @@ const UserProfileSchema: Schema<IUserProfile> = new Schema(
     phoneNumber: { type: String },
     userLocation: { type: String },
     profile_image: { type: String },
+    password:{type:String}
+
+
+
   },
   {
     timestamps: true,
