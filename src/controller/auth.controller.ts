@@ -75,28 +75,28 @@ export class AuthController {
   }
 
   /**
-   * PUT /api/auth/:id
+   * PUT /api/auth/update-profile
    * Update authenticated user's own data
    * This endpoint allows users to update their own profile
    * With image upload support via Multer
    */
   async updateAuthUser(req: Request, res: Response) {
     try {
-      const { id } = req.params;
+      // ✅ Get user ID from authenticated token
       const authenticatedUserId = req.user?._id.toString();
 
-      // Ensure user can only update their own profile
-      if (id !== authenticatedUserId) {
-        return res.status(403).json({
+      if (!authenticatedUserId) {
+        return res.status(401).json({
           success: false,
-          message: "Forbidden - You can only update your own profile",
+          message: "Authentication required",
         });
       }
 
-      // Validate update data using the existing UpdateProfileDto
+      // ✅ FIXED: Accept both fullname AND fullName
       const parsedData = z
         .object({
-          fullName: z.string().min(1).optional(),
+          fullname: z.string().min(1).optional(),
+          fullName: z.string().min(1).optional(), // Also accept fullName
           email: z.string().email().optional(),
           phoneNumber: z.string().optional(),
           userLocation: z.string().optional(),
@@ -114,14 +114,24 @@ export class AuthController {
 
       const updateData = parsedData.data;
 
+      // ✅ CRITICAL FIX: Map fullname → fullName for the service
+      const serviceData: any = {};
+      
+      if (updateData.email) serviceData.email = updateData.email;
+      if (updateData.fullName || updateData.fullname) {
+        serviceData.fullName = updateData.fullName || updateData.fullname;
+      }
+      if (updateData.phoneNumber) serviceData.phoneNumber = updateData.phoneNumber;
+      if (updateData.userLocation) serviceData.userLocation = updateData.userLocation;
+
       // Add profile image path if uploaded
       if (req.file) {
-        updateData.profile_image = `/uploads/${req.file.filename}`;
+        serviceData.profile_image = `/uploads/${req.file.filename}`;
       }
 
-      // Update profile using existing service (which now updates both tables)
+      // Update profile using existing service
       const result = await userProfileServices.updateUserProfile(
-        updateData as UpdateProfileDto,
+        serviceData as UpdateProfileDto,
         authenticatedUserId
       );
 
@@ -138,39 +148,37 @@ export class AuthController {
     }
   }
 
-
-    async sendResetPasswordEmail(req: Request, res: Response) {
-        try {
-            const email = req.body.email;
-            const user = await userService.sendResetPasswordEmail(email);
-            return res.status(200).json(
-                {
-                    success: true,
-                    data: user,
-                    message: "If the email is registered, a reset link has been sent."
-                }
-            );
-        } catch (error: Error | any) {
-            return res.status(error.statusCode ?? 500).json(
-                { success: false, message: error.message || "Internal Server Error" }
-            );
-        }
+  async sendResetPasswordEmail(req: Request, res: Response) {
+    try {
+      const email = req.body.email;
+      const user = await userService.sendResetPasswordEmail(email);
+      return res.status(200).json({
+        success: true,
+        data: user,
+        message: "If the email is registered, a reset link has been sent.",
+      });
+    } catch (error: Error | any) {
+      return res.status(error.statusCode ?? 500).json({
+        success: false,
+        message: error.message || "Internal Server Error",
+      });
     }
+  }
 
-    async resetPassword(req: Request, res: Response) {
-        try {
-
-            const token = req.params.token as string;
-            const { newPassword } = req.body;
-            await userService.resetPassword(token, newPassword);
-            return res.status(200).json(
-                { success: true, message: "Password has been reset successfully." }
-            );
-        } catch (error: Error | any) {
-            return res.status(error.statusCode ?? 500).json(
-                { success: false, message: error.message || "Internal Server Error" }
-            );
-        }
+  async resetPassword(req: Request, res: Response) {
+    try {
+      const token = req.params.token as string;
+      const { newPassword } = req.body;
+      await userService.resetPassword(token, newPassword);
+      return res.status(200).json({
+        success: true,
+        message: "Password has been reset successfully.",
+      });
+    } catch (error: Error | any) {
+      return res.status(error.statusCode ?? 500).json({
+        success: false,
+        message: error.message || "Internal Server Error",
+      });
     }
+  }
 }
-
