@@ -24,6 +24,7 @@ export class UserProfileServices {
   /**
    * Update user profile with transaction support
    * This now updates BOTH User table and UserProfile table atomically
+   * AND returns the complete user object for frontend auth
    */
   async updateUserProfile(data: UpdateProfileDto, userId: string) {
     const session = await mongoose.startSession();
@@ -43,10 +44,14 @@ export class UserProfileServices {
 
       // Update User table if there's data to update
       if (Object.keys(userUpdateData).length > 0) {
-        await UserModel.findByIdAndUpdate(userId, userUpdateData, {
+        const updated = await UserModel.findByIdAndUpdate(userId, userUpdateData, {
           session,
           new: true,
         });
+        
+        if (!updated) {
+          throw new HttpError(404, "User update failed");
+        }
       }
 
       // Prepare UserProfile table updates
@@ -64,19 +69,37 @@ export class UserProfileServices {
       const updatedProfile = await UserProfileModel.findOneAndUpdate(
         { userId },
         profileUpdateData,
-        { new: true, session, upsert: true } // upsert creates if doesn't exist
+        { new: true, session, upsert: true }
       );
-
-      await session.commitTransaction();
 
       if (!updatedProfile) {
         throw new HttpError(404, "Profile update failed");
       }
 
+      // Get the final updated user
+      const finalUser = await UserModel.findById(userId).session(session);
+      
+      if (!finalUser) {
+        throw new HttpError(404, "User not found after update");
+      }
+
+      await session.commitTransaction();
+
+      // ✅ CRITICAL FIX: Return User object with profile image attached
+      const userResponse: any = {
+        _id: finalUser._id,
+        email: finalUser.email,
+        fullname: finalUser.fullname,
+        role: finalUser.role,
+        createdAt: finalUser.createdAt,
+        updatedAt: finalUser.updatedAt,
+        imageUrl: updatedProfile.profile_image || null,
+      };
+      
       return {
         success: true,
         message: "Profile updated successfully (both User and Profile tables)",
-        data: updatedProfile,
+        data: userResponse,
       };
     } catch (error: any) {
       await session.abortTransaction();
