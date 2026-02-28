@@ -8,13 +8,19 @@ import adminRoutes from "./routes/admin.routes";
 import movieRouter from "./routes/movie.route";
 import userListRouter from "./routes/user.list.route";
 import publicMoviesRouter from "./routes/public.movie.router";
+import reviewRoutes from "./routes/review.routes";
 
 const app: Application = express();
 
 const corsOptions = {
-    origin: ['http://localhost:3000', 'http://localhost:3003', 'http://localhost:3005'],
-    optionsSuccessStatus: 200,
-    credentials: true,
+  origin: [
+    'http://localhost:3000',
+    'http://localhost:3003',
+    'http://localhost:3005',
+    'http://192.168.137.1:6050', // ← add this
+  ],
+  optionsSuccessStatus: 200,
+  credentials: true,
 };
 app.use(cors(corsOptions));
 
@@ -39,6 +45,8 @@ app.use("/api/admin/movies", movieRouter);
 app.use("/api/admin", adminRoutes);
 app.use("/api/user/lists", userListRouter);
 app.use("/api/movies", publicMoviesRouter);
+app.use('/api/reviews', reviewRoutes);
+
 
 app.get('/', (req: Request, res: Response) => {
     return res.status(200).json({ success: "true", message: "Welcome to the API" });
