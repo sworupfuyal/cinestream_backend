@@ -17,7 +17,9 @@ const corsOptions = {
     'http://localhost:3000',
     'http://localhost:3003',
     'http://localhost:3005',
-    'http://192.168.137.1:6050', // ← add this
+    'http://192.168.137.1:6050', 
+    'https://cinestream-web.vercel.app',
+    // ← add this
   ],
   optionsSuccessStatus: 200,
   credentials: true,
